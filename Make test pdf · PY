@@ -1,0 +1,87 @@
+
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle, Spacer, PageBreak
+from reportlab.lib.styles import getSampleStyleSheet
+
+styles = getSampleStyleSheet()
+doc = SimpleDocTemplate("/home/claude/sample_po.pdf", pagesize=letter)
+
+story = []
+story.append(Paragraph("PURCHASE ORDER #PO-88213", styles["Title"]))
+story.append(Paragraph(
+    "Supplier: Meridian Fastener & Component Co. Ship-to: Austin DC-4. "
+    "This purchase order covers replacement hydraulic couplings and mounting "
+    "hardware for line 3 retrofit. All parts must include calibration certs.",
+    styles["Normal"]))
+story.append(Spacer(1, 12))
+for _ in range(6):
+    story.append(Paragraph(
+        "General terms: All hardware supplied under this order must meet ASTM "
+        "torque and corrosion-resistance specifications current at time of "
+        "shipment. Supplier certifies calibration traceability for all listed "
+        "serials. Any substitution requires written buyer approval prior to "
+        "shipment and must be logged against the original line item reference.",
+        styles["Normal"]))
+    story.append(Spacer(1, 8))
+story.append(Paragraph("Line Items:", styles["Heading3"]))
+
+# A table deliberately long enough to split across the page break
+table_data = [["Line", "SKU", "Description", "Serial Number", "Qty", "Unit Price"]]
+rows = [
+    ("1", "HC-4471", "Hydraulic coupling 3/4in", "SN-88213-A7", "12", "$142.50"),
+    ("2", "HC-4472", "Hydraulic coupling 1in", "SN-88213-B3", "8", "$168.00"),
+    ("3", "MB-1090", "Mounting bracket steel", "SN-88213-C1", "24", "$22.15"),
+    ("4", "GK-3301", "Gasket kit EPDM", "SN-88213-D9", "24", "$9.80"),
+    ("5", "HC-4473", "Hydraulic coupling 1.5in", "SN-88213-E2", "6", "$201.75"),
+    ("6", "MB-1091", "Mounting bracket alloy", "SN-88213-F6", "24", "$31.40"),
+    ("7", "GK-3302", "Gasket kit Viton", "SN-88213-G4", "18", "$14.60"),
+    ("8", "HC-4474", "Hydraulic coupling 2in", "SN-88213-H8", "4", "$255.00"),
+    ("9", "MB-1092", "Mounting bracket steel", "SN-88213-I3", "24", "$21.90"),
+    ("10", "GK-3303", "Gasket kit EPDM 2in", "SN-88213-J7", "18", "$11.40"),
+    ("11", "HC-4475", "Hydraulic coupling 2.5in", "SN-88213-K1", "3", "$289.00"),
+    ("12", "MB-1093", "Mounting bracket alloy XL", "SN-88213-L5", "24", "$38.20"),
+    ("13", "GK-3304", "Gasket kit Viton XL", "SN-88213-M9", "18", "$16.75"),
+    ("14", "HC-4476", "Hydraulic coupling 3in", "SN-88213-N2", "2", "$312.00"),
+    ("15", "MB-1094", "Mounting bracket steel HD", "SN-88213-O6", "12", "$44.60"),
+    ("16", "GK-3305", "Gasket kit EPDM HD", "SN-88213-P4", "12", "$19.30"),
+    ("17", "FT-2201", "Filter cartridge fine", "SN-88213-Q8", "36", "$8.15"),
+    ("18", "FT-2202", "Filter cartridge coarse", "SN-88213-R2", "36", "$6.90"),
+    ("19", "VL-1801", "Pressure relief valve", "SN-88213-S6", "6", "$412.50"),
+    ("20", "VL-1802", "Check valve 1in", "SN-88213-T0", "10", "$96.20"),
+]
+for r in rows:
+    table_data.append(list(r))
+
+t = Table(table_data, repeatRows=1)
+t.setStyle(TableStyle([
+    ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2c3e50")),
+    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+    ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+    ("FONTSIZE", (0, 0), (-1, -1), 8),
+]))
+story.append(t)
+
+story.append(Spacer(1, 16))
+story.append(Paragraph(
+    "Note: Item HC-4474 (serial SN-88213-H8) was flagged during prior receiving "
+    "for a documentation mismatch and requires manual QA sign-off before stocking.",
+    styles["Normal"]))
+
+story.append(PageBreak())
+story.append(Paragraph("Shipment History (Supplier: Meridian Fastener & Component Co.)", styles["Heading3"]))
+story.append(Paragraph(
+    "Meridian has fulfilled 5 prior purchase orders to Austin DC-4 in the last two "
+    "quarters. Of these, 3 shipments arrived after the agreed ETA, including a "
+    "9-day delay on PO-87550 attributed to a carrier customs hold at the "
+    "Texas-Mexico border crossing. Region is currently under an active tariff "
+    "advisory for imported alloy hardware.",
+    styles["Normal"]))
+story.append(Spacer(1, 12))
+story.append(Paragraph(
+    "Invoice INV-55021 for this PO totals $6,214.80 and is due net-30 from "
+    "receipt confirmation.",
+    styles["Normal"]))
+
+doc.build(story)
+print("PDF written to /home/claude/sample_po.pdf")
