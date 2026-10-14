@@ -1,0 +1,4 @@
+Status: FAIL
+
+[ERROR] line 5 (HC-4473, SN-88213-E7, qty 6, $201.75) does not match any row in the source
+[ERROR] line 12 (MB-1093, SN-88213-L5, qty 24, $36.20) does not match any row in the source
