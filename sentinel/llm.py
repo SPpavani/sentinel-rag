@@ -60,12 +60,18 @@ def parse_llm_json(raw: str) -> dict:
         raise ExtractionError(f"the model reply is not valid JSON: {exc}") from exc
 
 
-def extract_with_llm(document_text: str, complete: Completer) -> PurchaseOrder:
-    data = parse_llm_json(complete(build_prompt(document_text)))
+def po_from_reply(raw: str) -> PurchaseOrder:
+    """Parse a model reply into a validated PurchaseOrder (or raise ExtractionError)."""
+    data = parse_llm_json(raw)
     try:
         return PurchaseOrder.model_validate(data)
     except ValidationError as exc:
         raise ExtractionError(f"the extraction does not match the schema: {exc}") from exc
+
+
+def extract_with_llm(document_text: str, complete: Completer) -> PurchaseOrder:
+    """Single attempt, no self-correction (see repair.py for the loop)."""
+    return po_from_reply(complete(build_prompt(document_text)))
 
 
 def anthropic_completer(model: str = "", max_tokens: int = 4096) -> Completer:

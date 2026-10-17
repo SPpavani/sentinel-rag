@@ -16,10 +16,12 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(prog="sentinel", description=__doc__)
     parser.add_argument("pdf")
     parser.add_argument("--extractor", choices=["rules", "llm"], default="rules")
+    parser.add_argument("--max-attempts", type=int, default=3,
+                        help="LLM extractor only: rounds of self-correction (1 = off, default 3)")
     parser.add_argument("--json", metavar="FILE", help="also write the full result as JSON")
     args = parser.parse_args(argv)
 
-    result = process_pdf(args.pdf, extractor=args.extractor)
+    result = process_pdf(args.pdf, extractor=args.extractor, max_attempts=args.max_attempts)
     po, report = result.po, result.report
 
     print(f"File:       {args.pdf}   (extractor: {result.extractor})")
@@ -29,6 +31,13 @@ def main(argv=None) -> int:
     print(f"Line items: {len(po.line_items)}   sum: ${po.lines_total:,.2f}")
     if po.invoice_total is not None:
         print(f"Invoice:    {po.invoice_number}   total: ${po.invoice_total:,.2f}")
+    if result.attempts:
+        print("\nAttempts:")
+        for a in result.attempts:
+            codes = f" ({', '.join(a.error_codes)})" if a.error_codes else ""
+            print(f"  {a.number}: {a.status}{codes}")
+        if result.healed:
+            print("  -> self-corrected: the model fixed its own extraction errors")
     print(f"\nSTATUS: {report.status}\n")
     for f in sorted(report.findings, key=lambda f: ORDER[f.severity]):
         where = f" (line {f.line})" if f.line else ""

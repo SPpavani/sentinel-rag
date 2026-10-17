@@ -2,7 +2,8 @@
 
 It does not care who produced the extraction (regex or an LLM). Four checks:
   1. Grounding     every value must be found in the source (catches hallucination)
-  2. Completeness  line numbers 1..N with no gaps, no duplicate serial numbers
+  2. Completeness  line numbers 1..N with no gaps, no duplicate serial numbers,
+                   and as many rows as the document contains
   3. Arithmetic    sum(qty x unit price) must equal the invoice total, to the cent
   4. Risk notes    flags, delays and tariffs mentioned in the text are surfaced
 """
@@ -16,6 +17,25 @@ from sentinel.pdf_text import normalize
 from sentinel.risk import find_risk_notes
 
 MONEY_RE = re.compile(r"\$?(\d[\d,]*\.\d{2})")
+# a table row: line number followed by an SKU-like token (e.g. "7 GK-3302 ...")
+ROW_LIKE_RE = re.compile(r"^\s*\d+\s+[A-Z]{2,}-\d+\s", re.M)
+
+# Errors a model can fix by re-reading the document. Document-level findings
+# (invoice_total_mismatch, risk notes) are deliberately NOT in this set: telling a
+# model to "fix" a genuine inconsistency in the document invites it to fudge numbers.
+REPAIRABLE_CODES = {
+    "ungrounded_row",
+    "ungrounded_field",
+    "row_count_mismatch",
+    "line_numbers_not_contiguous",
+    "duplicate_serial",
+    "no_line_items",
+}
+
+
+def extraction_errors(report: VerificationReport) -> List[Finding]:
+    """The errors the self-correcting loop is allowed to send back to the model."""
+    return [f for f in report.findings if f.severity == "error" and f.code in REPAIRABLE_CODES]
 
 
 def _money_values(text: str) -> set:
@@ -72,6 +92,17 @@ def _check_rows(po: PurchaseOrder, source_text: str) -> List[Finding]:
     return findings
 
 
+def _check_row_count(po: PurchaseOrder, source_text: str) -> List[Finding]:
+    """The source shows N table rows; a model that returns fewer has dropped some."""
+    in_source = len(ROW_LIKE_RE.findall(source_text))
+    if po.line_items and in_source and in_source != len(po.line_items):
+        return [Finding(
+            code="row_count_mismatch", severity="error",
+            message=f"the document contains {in_source} table rows but {len(po.line_items)} were extracted",
+        )]
+    return []
+
+
 def _check_completeness(po: PurchaseOrder) -> List[Finding]:
     findings: List[Finding] = []
     if not po.line_items:
@@ -117,6 +148,7 @@ def verify(po: PurchaseOrder, source_text: str) -> VerificationReport:
     findings: List[Finding] = []
     findings += _check_header(po, flat)
     findings += _check_rows(po, source_text)
+    findings += _check_row_count(po, source_text)
     findings += _check_completeness(po)
     findings += _check_arithmetic(po)
     findings += find_risk_notes(source_text, po)

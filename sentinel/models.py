@@ -52,7 +52,20 @@ class VerificationReport(BaseModel):
         return any(f.code == code for f in self.findings)
 
 
+class Attempt(BaseModel):
+    """One round of the self-correcting loop."""
+
+    number: int
+    status: str                      # PASS | REVIEW | FAIL | UNPARSEABLE
+    error_count: int = 0             # all errors found by the verifier
+    extraction_errors: int = 0       # errors the model can fix by re-reading the document
+    error_codes: List[str] = Field(default_factory=list)
+    detail: Optional[str] = None
+
+
 class ProcessingResult(BaseModel):
     extractor: str
     po: PurchaseOrder
     report: VerificationReport
+    attempts: List[Attempt] = Field(default_factory=list)
+    healed: bool = False             # first attempt had fixable errors, the final result has none
